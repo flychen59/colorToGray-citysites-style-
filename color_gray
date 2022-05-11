@@ -1,0 +1,189 @@
+gts_gray_path = r'/home/flychen59/SPADE/datasets/iVH2/gtFine/'  #灰度图的路径（原图）
+gts_color_path = r'/home/flychen59/SPADE/datasets/iVH2/color_label/'  #转换之后的彩色图路径
+import cv2
+import os,sys,time
+import numpy as np
+from collections import namedtuple
+
+Cls = namedtuple('cls', ['name', 'id', 'color'])
+Clss = [
+    Cls('road', 7, (0,0,255)), #这些标签颜色来自于github上面的cityscapesscripts/helpers/label.py
+    Cls('sidewalk', 8, (125, 158,192)),#(244,35,232)
+    Cls('building', 11, ( 0, 0, 0)),
+    # Cls('building', 11, ( 255, 153, 51)),
+
+    Cls('wall', 12, (0,0,0)),
+    Cls('fence', 13, (255,153,51)),
+    Cls('pole', 17, (0,128,128)),
+    Cls('traffic light', 19, (0,0, 0)),
+    Cls('traffic sign', 20, (0,255,  255)),
+    Cls('vegetation', 21, (0,255, 0)),
+    Cls('terrain',22 , (0,100,0)),
+    Cls('sky', 23 , (0,145,198) ),   #  ( 70,130,180)
+    Cls('person',24, (255, 255, 0)),
+    # Cls('rider',25 , (255,  0,  0)),
+    # Cls('car',26 , (  255,  0,0)),
+    # Cls('truck',27 , (  255,  0,0)),
+    Cls('bus', 28 ,(  255,  0,0)),
+    # Cls('train',16,(  0, 80,100)),
+    Cls('motorcycle',32,(  212,  105,30)),
+    # Cls('bicycle',18 , (119, 11, 32)),
+    Cls('unlabeled' , 0 ,( 0, 0,0)),
+    # Cls('ego vehicle'  , 1 ,(  0, 0,0)),
+    Cls('rectification border'  , 2 ,(  0, 0,0)),
+    # # Cls('license plate' , -1, (0, 0, 142)),
+    # Cls('polegroup'       , 18, (153,153, 153)),
+    # Cls('guard rail'        , 14, (180,165,180) ),
+   ]
+
+
+
+
+
+
+ #
+ # Label(  'unlabeled'            ,  0 ,      255 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+ #    Label(  'ego vehicle'          ,  1 ,      255 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+ #    Label(  'rectification border' ,  2 ,      255 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+ #    Label(  'out of roi'           ,  3 ,      255 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+ #    Label(  'static'               ,  4 ,      255 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+ #    Label(  'dynamic'              ,  5 ,      255 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
+ #    Label(  'ground'               ,  6 ,      255 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
+ #    Label(  'road'                 ,  7 ,        0 , 'flat'            , 1       , False        , False        , (128, 64,128) ),
+ #    Label(  'sidewalk'             ,  8 ,        1 , 'flat'            , 1       , False        , False        , (244, 35,232) ),
+ #    Label(  'parking'              ,  9 ,      255 , 'flat'            , 1       , False        , True         , (250,170,160) ),
+ #    Label(  'rail track'           , 10 ,      255 , 'flat'            , 1       , False        , True         , (230,150,140) ),
+ #    Label(  'building'             , 11 ,        2 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
+ #    Label(  'wall'                 , 12 ,        3 , 'construction'    , 2       , False        , False        , (102,102,156) ),
+ #    Label(  'fence'                , 13 ,        4 , 'construction'    , 2       , False        , False        , (190,153,153) ),
+ #    Label(  'guard rail'           , 14 ,      255 , 'construction'    , 2       , False        , True         , (180,165,180) ),
+ #    Label(  'bridge'               , 15 ,      255 , 'construction'    , 2       , False        , True         , (150,100,100) ),
+ #    Label(  'tunnel'               , 16 ,      255 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
+ #    Label(  'pole'                 , 17 ,        5 , 'object'          , 3       , False        , False        , (153,153,153) ),
+ #    Label(  'polegroup'            , 18 ,      255 , 'object'          , 3       , False        , True         , (153,153,153) ),
+ #    Label(  'traffic light'        , 19 ,        6 , 'object'          , 3       , False        , False        , (250,170, 30) ),
+ #    Label(  'traffic sign'         , 20 ,        7 , 'object'          , 3       , False        , False        , (220,220,  0) ),
+ #    Label(  'vegetation'           , 21 ,        8 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
+ #    Label(  'terrain'              , 22 ,        9 , 'nature'          , 4       , False        , False        , (152,251,152) ),
+ #    Label(  'sky'                  , 23 ,       10 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
+ #    Label(  'person'               , 24 ,       11 , 'human'           , 6       , True         , False        , (220, 20, 60) ),
+ #    Label(  'rider'                , 25 ,       12 , 'human'           , 6       , True         , False        , (255,  0,  0) ),
+ #    Label(  'car'                  , 26 ,       13 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
+ #    Label(  'truck'                , 27 ,       14 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
+ #    Label(  'bus'                  , 28 ,       15 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
+ #    Label(  'caravan'              , 29 ,      255 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
+ #    Label(  'trailer'              , 30 ,      255 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
+ #    Label(  'train'                , 31 ,       16 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
+ #    Label(  'motorcycle'           , 32 ,       17 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
+ #    Label(  'bicycle'              , 33 ,       18 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
+ #    Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
+ #
+ #
+
+def gray_color(color_dict, gray_path=gts_gray_path, color_path=gts_color_path):
+    '''
+    swift gray image to color, by color mapping relationship
+    :param color_dict:color mapping relationship, dict format
+    :param gray_path:gray imgs path
+    :param color_path:color imgs path
+    :return:
+    '''
+    pass
+    t1 = time.time()
+    gt_list = os.listdir(gray_path)
+    for index, gt_name in enumerate(gt_list):
+        gt_gray_path = os.path.join(gray_path, gt_name)
+        gt_color_path = os.path.join(color_path, gt_name)
+        gt_gray = cv2.imread(gt_gray_path, cv2.IMREAD_GRAYSCALE)
+        assert len(gt_gray.shape) == 2  # make sure gt_gray is 1band
+        gt_color = matrix_mapping(color_dict, gt_gray)
+        # endregion
+
+        gt_color = cv2.cvtColor(gt_color, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(gt_color_path, gt_color, )
+        process_show(index + 1, len(gt_list))
+    print(time.time() - t1)
+
+
+def color_gray(color_dict, color_path=gts_color_path, gray_path=gts_gray_path, ):
+    '''
+    swift color image to gray, by color mapping relationship
+    :param color_dict:color mapping relationship, dict format
+    :param gray_path:gray imgs path
+    :param color_path:color imgs path
+    :return:
+    '''
+    gray_dict = {}
+    for k, v in color_dict.items():
+        gray_dict[v] = k
+    t1 = time.time()
+    gt_list = os.listdir(color_path)
+    for index, gt_name in enumerate(gt_list):
+        gt_gray_path = os.path.join(gray_path, gt_name)
+        gt_color_path = os.path.join(color_path, gt_name)
+        color_array = cv2.imread(gt_color_path, cv2.IMREAD_COLOR)
+        assert len(color_array.shape) == 3
+
+        gt_gray = np.zeros((color_array.shape[0], color_array.shape[1]), np.uint8)
+        b, g, r = cv2.split(color_array)
+        color_array = np.array([r, g, b])
+        for cls_color, cls_index in gray_dict.items():
+            cls_pos = arrays_jd(color_array, cls_color)
+            gt_gray[cls_pos] = cls_index
+
+        cv2.imwrite(gt_gray_path, gt_gray)
+        process_show(index + 1, len(gt_list))
+    print(time.time() - t1)
+
+
+def arrays_jd(arrays, cond_nums):
+    r = arrays[0] == cond_nums[0]
+    g = arrays[1] == cond_nums[1]
+    b = arrays[2] == cond_nums[2]
+    return r & g & b
+
+
+def matrix_mapping(color_dict, gt):
+    colorize = np.zeros([len(color_dict), 3], 'uint8')
+    for cls, color in color_dict.items():
+        colorize[cls, :] = list(color)
+    ims = colorize[gt, :]
+    ims = ims.reshape([gt.shape[0], gt.shape[1], 3])
+    return ims
+
+
+def nt_dic(nt=Clss):
+    '''
+    swift nametuple to color dict
+    :param nt: nametuple
+    :return:
+    '''
+    pass
+    color_dict = {}
+    for cls in nt:
+        color_dict[cls.id] = cls.color
+    return color_dict
+
+
+def process_show(num, nums, pre_fix='', suf_fix=''):
+    '''
+    auxiliary function, print work progress
+    :param num:
+    :param nums:
+    :param pre_fix:
+    :param suf_fix:
+    :return:
+    '''
+    rate = num / nums
+    ratenum = round(rate, 3) * 100
+    bar = '\r%s %g/%g [%s%s]%.1f%% %s' % \
+          (pre_fix, num, nums, '#' * (int(ratenum) // 5), '_' * (20 - (int(ratenum) // 5)), ratenum, suf_fix)
+    sys.stdout.write(bar)
+    sys.stdout.flush()
+
+
+if __name__ == '__main__':
+    pass
+    color_dict = nt_dic()
+    # gray_color(color_dict)
+    color_gray(color_dict)
